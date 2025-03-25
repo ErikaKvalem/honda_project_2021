@@ -671,7 +671,7 @@ bplapply(names(ora_tests), function(ora_name) {
         ) + # Keep the text size
         scale_y_discrete(labels = function(x) str_wrap(x, width = wrap_width)) # Dynamic wrapping
 
-      save_plot(file.path(results_dir, paste0(prefix, "_ORA_", ora_name, "_dotplot")), p, width = 15, height = 10)
+      save_plot(file.path(results_dir, paste0(prefix, "_ORA_", ora_name, "_dotplot")), p, width = 10, height = 10)
 
       p <- cnetplot(ora_res,
         categorySize = "pvalue",
@@ -680,14 +680,14 @@ bplapply(names(ora_tests), function(ora_name) {
         vertex.label.font = 6
       ) + scale_color_gradient2(name = "log2FoldChange", low = "blue3", high = "firebrick")
 
-      save_plot(file.path(results_dir, paste0(prefix, "_ORA_", ora_name, "_cnetplot")), p, width = 15, height = 12)
+      save_plot(file.path(results_dir, paste0(prefix, "_ORA_", ora_name, "_cnetplot")), p, width = 10, height = 12)
 
       if (!skip_heatplots) {
         p <- heatplot(ora_res, foldChange = de_foldchanges, showCategory = 40) +
-          scale_fill_gradient2(midpoint = 0, low = "blue4", mid = "white", high = "red4")
+          scale_fill_gradient2(midpoint = 2, low = "blue4", mid = "white", high = "firebrick")
         hp_dims <- get_heatplot_dims(p)
 
-        save_plot(file.path(results_dir, paste0(prefix, "_ORA_", ora_name, "_heatplot")), p, width = hp_dims[1], height = hp_dims[2])
+        save_plot(file.path(results_dir, paste0(prefix, "_ORA_", ora_name, "_heatplot")), p, width = hp_dims[1]*0.7, height = hp_dims[2]*0.7)
       }
     } else {
       message(paste0("Warning: No significant enrichment in ", ora_name, " ORA analysis. "))
@@ -778,13 +778,15 @@ if (!skip_gsea) {
         # Filter significant results (p.adjust < 0.05)
         gsea_res_sig <- gsea_res
         gsea_res_sig@result <- gsea_res@result[gsea_res@result$p.adjust < 0.05, ]
+        gsea_res_sig@result <- gsea_res@result[gsea_res@result$enrichmentScore > 0, ]
+        
 
         # Check if any significant results remain
         if (nrow(gsea_res_sig@result) == 0) {
           print("No significantly enriched gene sets found with p.adjust < 0.1")
         } else {
           # Create the dotplot with automatic label adjustment
-          p <- dotplot(gsea_res_sig, showCategory = 15, split = ".sign") + facet_grid(. ~ .sign) +
+          p <- dotplot(gsea_res_sig, showCategory = 8, split = ".sign")  + facet_grid(. ~ .sign) +
             theme(
               plot.margin = unit(c(1, 1, 1, 1), "cm"), # Maintain the left margin
               strip.text.x = element_text(size = 16, face = "bold"),
@@ -792,7 +794,7 @@ if (!skip_gsea) {
             ) + # Keep the text size
             scale_y_discrete(labels = function(x) str_wrap(x, width = wrap_width)) # Dynamic wrapping
 
-          save_plot(file.path(results_dir, paste0(prefix, "_GSEA_", gsea_name, "_dotplot")), p, width = 20, height = 15)
+          save_plot(file.path(results_dir, paste0(prefix, "_GSEA_", gsea_name, "_dotplot")), p, width = 8, height =8 )
         }
 
         p <- cnetplot(gsea_res,
@@ -850,7 +852,7 @@ p <- EnhancedVolcano(resIHW,
   legendPosition = "right",
   caption = paste0("fold change cutoff: ", round(2**fc_cutoff, 1), ", adj.p-value cutoff: ", fdr_cutoff),
   title = plot_title,
-  labFace = "italic"
+  labFace = "italic",  ylim = c(0, 7.5) # Setting the y-axis limits
 )
 
 save_plot(file.path(results_dir, paste0(prefix, "_volcano_padj")), p, width = 9, height = 7)
@@ -911,3 +913,23 @@ if (!is.null(genes_of_interest)) {
 #  sessioninfo_file <- file.path(results_dir, paste0(prefix, "_", time_stamp, "_sessionInfo.json"))
 #  session_info() |> jsonlite::write_json(sessioninfo_file, pretty = TRUE)
 #}
+
+  
+  
+  # Filter only positively enriched (activated) pathways
+  gsea_res_sig_activated <- gsea_res_sig[gsea_res_sig$NES > 0, ]
+  
+  # Generate the dot plot for activated pathways only
+  p <- dotplot(gsea_res_sig_activated, showCategory = 10, split = ".sign") + 
+    facet_grid(. ~ .sign) +
+    theme(
+      plot.margin = unit(c(1, 1, 1, 1), "cm"), # Maintain the left margin
+      strip.text.x = element_text(size = 16, face = "bold"),
+      axis.text.y = element_text(size = 13, hjust = 1)
+    ) + 
+    scale_y_discrete(labels = function(x) str_wrap(x, width = wrap_width)) # Dynamic wrapping
+  
+  # Save the plot
+  save_plot(file.path(results_dir, paste0(prefix, "_GSEA_", gsea_name, "_dotplot_activated")), 
+            p, width = 15, height = 10)
+  
